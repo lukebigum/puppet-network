@@ -29,6 +29,18 @@ describe Puppet::Type.type(:network_route).provider(:redhat) do
       end
     end
 
+    describe 'an interface specific route file' do
+      let(:data) { described_class.parse_file('/etc/sysconfig/network-scripts/route-eth0', fixture_data('route-eth0')) }
+
+      it 'should parse out normal network routes' do
+        expect(data.find { |h| h[:name] == '192.168.0.0/24' }).to eq(:name       => '192.168.0.0/24',
+                                                                     :network    => '192.168.0.0',
+                                                                     :netmask    => '255.255.255.0',
+                                                                     :gateway    => '192.168.0.1',
+                                                                     :interface  => 'eth0')
+      end
+    end
+
     describe 'an advanced, well formed file' do
       let(:data) { described_class.parse_file('', fixture_data('advanced_routes')) }
 
@@ -85,8 +97,18 @@ describe Puppet::Type.type(:network_route).provider(:redhat) do
       )
     end
 
-    let(:content) { described_class.format_file('', [route1_provider, route2_provider, defaultroute_provider]) }
+    let(:no_options_provider) do
+      stub('no_options_provider',
+           :name       => '192.168.0.0/24',
+           :network    => '192.168.0.0',
+           :netmask    => '24',
+           :gateway    => '192.168.0.1',
+           :interface  => 'eth7',
+           :options    => :absent,
+      )
+    end
 
+    let(:content) { described_class.format_file('', [route1_provider, route2_provider, defaultroute_provider, no_options_provider]) }
     describe 'writing the route line' do
       describe 'For standard (non-default) routes' do
         it 'should write 5 fields' do
@@ -115,6 +137,12 @@ describe Puppet::Type.type(:network_route).provider(:redhat) do
     describe 'for default routes' do
       it 'should have the correct fields appended' do
         expect(content.scan(/^default .*$/).first).to include('default via 10.0.0.1 dev eth1')
+      end
+    end
+
+    describe 'for a route with no extra options' do
+      it 'should not write "absent" to the line' do
+          expect(content.scan(%r{^192\.168\.0\.0.*}).first).to_not include('absent')
       end
     end
   end

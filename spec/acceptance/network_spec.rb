@@ -29,6 +29,14 @@ network_config { 'bond0':
     bonding_opts => 'mode=4 miimon=100 xmit_hash_policy=layer3+4',
   }
 }
+
+network_route { '192.168.0.0/24':
+  ensure    => 'present',
+  gateway   => '192.168.0.1',
+  interface => 'bond0',
+  netmask   => '255.255.255.0',
+  network   => '192.168.0.0',
+}
       EOS
       # run twice, test for idempotency
       apply_manifest(pp, :catch_failures => true)
@@ -54,6 +62,10 @@ network_config { 'bond0':
       its(:content) { should match(/^NETMASK=255\.255\.255\.0$/) }
       its(:content) { should match(/^BONDING_OPTS="mode=4 miimon=100 xmit_hash_policy=layer3\+4"$/) }
       its(:content) { should match(/^MTU=9000$/) }
+    end
+
+    describe file('/etc/sysconfig/network-scripts/route-bond0') do
+      its(:content) { should match(/^192\.168\.0\.0\/24 via 192\.168\.0\.1 dev bond0$/) }
     end
   end
 end

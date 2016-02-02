@@ -218,6 +218,8 @@ Puppet::Type.type(:network_config).provide(:redhat) do
       content << %(#{key}=#{value}\n)
     end
 
+    Puppet.debug "format_file(): contents sent to filemapper: #{content}"
+
     content
   end
 
